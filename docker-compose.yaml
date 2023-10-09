@@ -1,0 +1,48 @@
+version: '3.5'
+
+services:
+  nodebackend:
+    restart: always
+    build:
+      dockerfile: Dockerfile
+    container_name: nodebackend
+    tty: true
+    networks:
+      - proxy-reverso
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+
+  db:
+    image: mysql
+    container_name: db
+    # NOTE: use of "mysql_native_password" is not recommended: https://dev.mysql.com/doc/refman/8.0/en/upgrading-from-previous-series.html#upgrade-caching-sha2-password
+    # (this is just an example, not intended to be a production configuration)
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    volumes:
+      - ./mysql:/var/lib/mysql
+      - "./script/create.sql:/docker-entrypoint-initdb.d/1.sql"
+      - "./script/insertPeople.sql:/docker-entrypoint-initdb.d/2.sql"
+    environment: 
+      - MYSQL_DATABASE=fullcycle
+      - MYSQL_USER=devUser
+      - MYSQL_ROOT_PASSWORD=FullCycle
+    networks:
+      - proxy-reverso
+    tty: true
+
+  nginx:
+    image: nginx:1.25.2-alpine
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - "8000:80"
+    networks:
+      - proxy-reverso
+    restart: always
+
+networks:
+  proxy-reverso:
+    driver: bridge
